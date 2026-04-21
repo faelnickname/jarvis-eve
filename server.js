@@ -17,11 +17,16 @@ const IS_LINUX = process.platform === 'linux';
 const PYTHON_CMD = IS_LINUX ? 'python3' : 'C:\\Program Files\\Python311\\python.exe';
 const HAS_PYTHON = IS_LINUX || fs.existsSync('C:\\Program Files\\Python311\\python.exe');
 
+// Ensure data dirs exist (important on first boot with fresh volume)
+try { fs.mkdirSync(path.join(IS_LINUX ? '/app/data' : __dirname, IS_LINUX ? 'projects' : 'Documents and Projects'), { recursive: true }); } catch {}
+try { fs.mkdirSync(path.join(IS_LINUX ? '/app/data' : __dirname, 'system'), { recursive: true }); } catch {}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JARVIS_DIR = __dirname;
-const PROJECTS_DIR = path.join(JARVIS_DIR, 'Documents and Projects');
-const SYSTEM_DIR = path.join(JARVIS_DIR, 'system');
+const DATA_DIR = IS_LINUX ? '/app/data' : JARVIS_DIR;
+const PROJECTS_DIR = IS_LINUX ? path.join(DATA_DIR, 'projects') : path.join(JARVIS_DIR, 'Documents and Projects');
+const SYSTEM_DIR = IS_LINUX ? path.join(DATA_DIR, 'system') : path.join(JARVIS_DIR, 'system');
 const MEMORY_FILE = path.join(SYSTEM_DIR, 'JARVIS-MEMORY.md');
 const HISTORY_FILE = path.join(SYSTEM_DIR, 'JARVIS-HISTORY.json');
 const EMBEDDINGS_FILE = path.join(SYSTEM_DIR, 'memory-embeddings.json');
