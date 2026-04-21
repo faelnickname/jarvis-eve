@@ -1777,7 +1777,7 @@ IMPORTANT: When the user asks you to CREATE, BUILD, GENERATE, WRITE, DESIGN, FIX
         model: 'gpt-4o-realtime-preview',
         voice,
         instructions,
-        turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 500 },
+        turn_detection: { type: 'server_vad', threshold: 0.3, prefix_padding_ms: 200, silence_duration_ms: 600 },
         input_audio_transcription: {
           model: 'whisper-1',
           language: { BR: 'pt', ES: 'es', EN: 'en' }[language] || 'en'

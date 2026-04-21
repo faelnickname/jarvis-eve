@@ -682,10 +682,14 @@ async function startRealtime() {
     const pc = new RTCPeerConnection();
     realtimePC = pc;
 
-    // Remote audio sink
+    // Remote audio sink — explicit play() required by browser autoplay policy
     realtimeAudio = new Audio();
     realtimeAudio.autoplay = true;
-    pc.ontrack = (e) => { realtimeAudio.srcObject = e.streams[0]; setAvatarState('speaking'); };
+    pc.ontrack = (e) => {
+      realtimeAudio.srcObject = e.streams[0];
+      realtimeAudio.play().catch(() => {});
+      setAvatarState('speaking');
+    };
 
     // Mic input
     realtimeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -743,9 +747,11 @@ async function startRealtime() {
     if (cbtn) { cbtn.style.color = 'var(--cyan)'; cbtn.style.background = 'rgba(0,212,255,0.1)'; }
     micBtn.classList.add('recording');
   } catch (err) {
-    addTerminalLine('[error] Realtime: ' + err.message, 'error-line');
     realtimeConnecting = false;
     stopRealtime();
+    addTerminalLine(`[warn] Realtime WebRTC falhou (${err.message}) — usando modo STT`, 'warn-line');
+    // Auto-fallback: use push-to-talk STT instead
+    startRecording();
   }
 }
 
