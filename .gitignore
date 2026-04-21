@@ -1,0 +1,15 @@
+node_modules/
+.env
+*.bat
+*.exe
+*.dat
+launcher/
+audio/
+Documents and Projects/
+Documentos e Projetos/
+system/
+conversation_history.json
+PDF CURSO*.pdf
+Leia Me.pdf
+unins*
+JARVIS-Launcher.exe

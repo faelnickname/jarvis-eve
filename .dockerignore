@@ -1,0 +1,13 @@
+node_modules
+.env
+*.bat
+*.exe
+*.dat
+*.pdf
+launcher/
+audio/
+Documentos e Projetos/
+Documents and Projects/
+system/
+.claude/
+conversation_history.json

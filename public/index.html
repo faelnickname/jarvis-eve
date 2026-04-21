@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E.V.E. — Cockpit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- AMBIENT BACKGROUND LAYERS -->
+  <div class="bg-hex"></div>
+  <div class="bg-scanlines"></div>
+  <div class="bg-glow-tl"></div>
+  <div class="bg-glow-br"></div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="navbar-left">
+      <div class="nav-orb-wrap">
+        <div class="nav-orb"></div>
+        <div class="nav-orb-ring"></div>
+      </div>
+      <span class="navbar-title">E·V·E</span>
+      <span class="navbar-sub">v5.0 · ULTRA</span>
+    </div>
+    <div class="navbar-tabs">
+      <button class="tab-btn active" data-tab="principal">
+        <span class="tab-icon">◈</span> Cockpit
+      </button>
+      <button class="tab-btn" data-tab="file">
+        <span class="tab-icon">◉</span> Files
+      </button>
+      <button class="tab-btn" data-tab="config">
+        <span class="tab-icon">◎</span> Config
+      </button>
+    </div>
+    <div class="navbar-right">
+      <div class="lang-toggle" id="lang-toggle">
+        <button class="lang-btn active" id="lang-en">EN</button>
+        <button class="lang-btn" id="lang-br">BR</button>
+        <button class="lang-btn" id="lang-es">ES</button>
+      </div>
+      <div class="clock-wrap">
+        <span class="clock" id="clock">00:00:00</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ════════════════════════════════════════
+       TAB: COCKPIT
+  ════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-principal">
+    <div class="cockpit-grid">
+
+      <!-- ══ LEFT: AGENTS SIDEBAR ══ -->
+      <aside class="agents-sidebar">
+        <div class="sidebar-label">AIOX · CORE</div>
+
+        <div class="agent-group">
+          <div class="group-header">
+            <div class="group-dot dot-cyan"></div>
+            OPUS 4.6
+          </div>
+          <div class="agent-chip model-opus" data-agent="architect" title="System Architecture & Decisions">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@architect</span>
+            <span class="agent-badge">4.6</span>
+          </div>
+          <div class="agent-chip model-opus" data-agent="aios-master" title="Full orchestration authority">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@aios-master</span>
+            <span class="agent-badge">4.6</span>
+          </div>
+          <div class="agent-chip model-opus" data-agent="data-eng" title="Database & Schema Design">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@data-eng</span>
+            <span class="agent-badge">4.6</span>
+          </div>
+          <div class="agent-chip model-opus" data-agent="devops" title="Deploy, CI/CD, Infrastructure">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@devops</span>
+            <span class="agent-badge">4.6</span>
+          </div>
+        </div>
+
+        <div class="agent-group">
+          <div class="group-header">
+            <div class="group-dot dot-purple"></div>
+            SONNET 4.6
+          </div>
+          <div class="agent-chip model-sonnet" data-agent="dev" title="Code Implementation">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@dev</span>
+            <span class="agent-badge">4.6</span>
+          </div>
+          <div class="agent-chip model-sonnet" data-agent="ux" title="UI/UX Design">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@ux</span>
+            <span class="agent-badge">4.6</span>
+          </div>
+          <div class="agent-chip model-sonnet" data-agent="pm" title="Product Management">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@pm</span>
+            <span class="agent-badge">4.6</span>
+          </div>
+          <div class="agent-chip model-sonnet" data-agent="po" title="Product Owner">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@po</span>
+            <span class="agent-badge">4.6</span>
+          </div>
+          <div class="agent-chip model-sonnet" data-agent="analyst" title="Research & Analysis">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@analyst</span>
+            <span class="agent-badge">4.6</span>
+          </div>
+          <div class="agent-chip model-sonnet" data-agent="qa" title="Quality Assurance">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@qa</span>
+            <span class="agent-badge">4.6</span>
+          </div>
+        </div>
+
+        <div class="agent-group">
+          <div class="group-header">
+            <div class="group-dot dot-green"></div>
+            HAIKU 4.5
+          </div>
+          <div class="agent-chip model-haiku" data-agent="sm" title="Story & Template Creation">
+            <span class="agent-dot"></span>
+            <span class="agent-name">@sm</span>
+            <span class="agent-badge">4.5</span>
+          </div>
+        </div>
+
+        <!-- CONCLAVE MEGA-BRAIN -->
+        <div class="conclave-block">
+          <div class="conclave-header">
+            <div class="conclave-pulse"></div>
+            MEGA-BRAIN CONCLAVE
+          </div>
+          <div class="conclave-agents">
+            <div class="agent-chip mega-chip model-opus" data-agent="conclave" title="3 AI minds — Crítico · Advogado · Sintetizador">
+              <span class="agent-dot dot-mega" id="conclave-dot"></span>
+              <span class="agent-name">Conclave</span>
+              <label class="conclave-toggle" title="Toggle Conclave">
+                <input type="checkbox" id="conclave-checkbox" checked>
+                <span class="conclave-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="conclave-desc">
+            🔍 Crítico · 😈 Advogado · 🔮 Sintetizador
+          </div>
+        </div>
+      </aside>
+
+      <!-- ══ CENTER: REACTOR + TERMINAL ══ -->
+      <main class="center-col">
+
+        <!-- ARC REACTOR -->
+        <div class="reactor-section">
+          <div class="reactor-scanbeam"></div>
+
+          <div class="avatar-container">
+            <!-- Outer decorative arcs -->
+            <div class="hud-arc hud-arc-tl"></div>
+            <div class="hud-arc hud-arc-tr"></div>
+            <div class="hud-arc hud-arc-bl"></div>
+            <div class="hud-arc hud-arc-br"></div>
+
+            <!-- Horizontal scan lines -->
+            <div class="hud-line hud-line-top"></div>
+            <div class="hud-line hud-line-bottom"></div>
+
+            <!-- Rings -->
+            <div class="ring ring-1"></div>
+            <div class="ring ring-2"></div>
+            <div class="ring ring-3"></div>
+            <div class="ring ring-4"></div>
+
+            <!-- Tick marks on ring 1 -->
+            <div class="ring-ticks">
+              <div class="tick" style="--i:0"></div>
+              <div class="tick" style="--i:1"></div>
+              <div class="tick" style="--i:2"></div>
+              <div class="tick" style="--i:3"></div>
+              <div class="tick" style="--i:4"></div>
+              <div class="tick" style="--i:5"></div>
+              <div class="tick" style="--i:6"></div>
+              <div class="tick" style="--i:7"></div>
+              <div class="tick" style="--i:8"></div>
+              <div class="tick" style="--i:9"></div>
+              <div class="tick" style="--i:10"></div>
+              <div class="tick" style="--i:11"></div>
+            </div>
+
+            <!-- Core -->
+            <div class="avatar-arc">
+              <div class="arc-hex"></div>
+              <div class="arc-core"></div>
+            </div>
+
+            <!-- Pulse waves -->
+            <div class="arc-pulse pulse-1"></div>
+            <div class="arc-pulse pulse-2"></div>
+          </div>
+
+          <!-- Status below reactor -->
+          <div class="reactor-meta">
+            <div class="avatar-status" id="avatar-status">AWAITING COMMAND</div>
+            <div class="reactor-indicators">
+              <div class="ri-dot active"></div>
+              <div class="ri-dot active"></div>
+              <div class="ri-dot active"></div>
+              <div class="ri-dot"></div>
+              <div class="ri-dot"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TERMINAL -->
+        <div class="terminal" id="terminal">
+          <div class="terminal-topbar">
+            <div class="ttb-dots">
+              <span class="ttb-dot ttb-r"></span>
+              <span class="ttb-dot ttb-y"></span>
+              <span class="ttb-dot ttb-g"></span>
+            </div>
+            <span class="ttb-title">EVE · OUTPUT STREAM</span>
+            <div class="ttb-right">
+              <span class="ttb-badge" id="ttb-model">—</span>
+            </div>
+          </div>
+          <div class="terminal-output" id="terminal-output">
+            <div class="terminal-line system-line">
+              <span class="ts">[BOOT]</span>
+              <span class="msg" id="boot-msg">[system] EVE COCKPIT INICIALIZADO. TODO SISTEMA DE INTELIGÊNCIA CARREGADO COM SUCESSO E PRONTO PARA USO.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- INPUT BAR -->
+        <div class="input-bar">
+          <button class="mic-btn" id="mic-btn" title="Voice Input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            <div class="mic-ring"></div>
+          </button>
+          <button class="screen-btn" id="screen-btn" title="Capture Screen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <path d="M8 21h8M12 17v4"/>
+              <circle cx="12" cy="10" r="3" stroke-dasharray="2 1"/>
+            </svg>
+          </button>
+<div class="input-wrap">
+            <input type="text" class="chat-input" id="chat-input" placeholder="Talk to EVE..." autocomplete="off">
+            <div class="input-glow"></div>
+          </div>
+          <label class="attach-btn" title="Attach File">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+            <input type="file" id="file-attach" hidden>
+          </label>
+          <button class="send-btn" id="send-btn" title="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            <div class="send-ripple"></div>
+          </button>
+        </div>
+      </main>
+
+      <!-- ══ RIGHT: METRICS SIDEBAR ══ -->
+      <aside class="metrics-sidebar">
+        <div class="sidebar-label">SYSTEM · HUD</div>
+
+        <!-- Session time -->
+        <div class="metric-card metric-large">
+          <div class="metric-label">SESSION</div>
+          <div class="metric-value font-orb" id="stat-session">00:00:00</div>
+        </div>
+
+        <!-- Latency -->
+        <div class="metric-card">
+          <div class="metric-label">LATENCY</div>
+          <div class="metric-value" id="stat-latency">—</div>
+        </div>
+
+        <!-- Tokens -->
+        <div class="metric-card">
+          <div class="metric-label">TOKENS</div>
+          <div class="metric-value" id="stat-tokens">0</div>
+        </div>
+
+        <!-- Requests -->
+        <div class="metric-card">
+          <div class="metric-label">REQUESTS</div>
+          <div class="metric-value" id="stat-requests">0</div>
+        </div>
+
+        <!-- Plan -->
+        <div class="metric-card metric-plan">
+          <div class="metric-label">PLAN</div>
+          <div class="metric-value" id="stat-plan">Max</div>
+        </div>
+
+        <!-- Pool HUD -->
+        <div class="metric-card pool-card" title="Warm pool — pre-spawned processes">
+          <div class="metric-label">WARM POOL</div>
+          <div class="metric-value pool-hud" id="stat-pool">O· S· H·</div>
+        </div>
+
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-label" style="margin-top:4px">MODELS · MATRIX</div>
+
+        <div class="model-card stat-card" id="model-opus">
+          <div class="model-header">
+            <div class="model-dot dot-cyan"></div>
+            <span class="model-name">OPUS 4.6</span>
+          </div>
+          <div class="model-desc">Deep Reasoning</div>
+        </div>
+        <div class="model-card stat-card" id="model-sonnet">
+          <div class="model-header">
+            <div class="model-dot dot-purple"></div>
+            <span class="model-name">SONNET 4.6</span>
+          </div>
+          <div class="model-desc">Code · Design</div>
+        </div>
+        <div class="model-card stat-card" id="model-haiku">
+          <div class="model-header">
+            <div class="model-dot dot-green"></div>
+            <span class="model-name">HAIKU 4.5</span>
+          </div>
+          <div class="model-desc">Speed · Voice</div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       TAB: FILES
+  ════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-file">
+    <div class="file-browser">
+      <h2 class="section-title">Documents &amp; Projects</h2>
+      <div class="file-list" id="file-list">
+        <div class="file-empty">No files yet. Ask EVE to create something.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       TAB: CONFIG
+  ════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-config">
+    <div class="config-panel">
+      <h2 class="section-title">Configuration</h2>
+      <div class="config-group">
+        <label class="config-label">OpenAI API Key</label>
+        <div class="config-row">
+          <input type="password" class="config-input" id="config-api-key" placeholder="sk-proj-...">
+          <button class="config-save-btn" id="save-api-key">Save</button>
+        </div>
+        <span class="config-hint">Required for voice features (Whisper STT + TTS)</span>
+      </div>
+      <div class="config-group">
+        <label class="config-label">Voice Enabled</label>
+        <label class="toggle">
+          <input type="checkbox" id="config-voice" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="config-group">
+        <label class="config-label">Wake Word "EVE"</label>
+        <label class="toggle">
+          <input type="checkbox" id="config-wakeword">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="config-hint">Listens for "EVE" to start voice capture</span>
+      </div>
+      <div class="config-group">
+        <label class="config-label">TTS Voice</label>
+        <select class="config-select" id="config-tts-voice">
+          <option value="ash">ash — Confident, clear (default)</option>
+          <option value="coral">coral — Bright, energetic</option>
+          <option value="sage">sage — Calm, thoughtful</option>
+          <option value="alloy">alloy — Neutral, balanced</option>
+          <option value="echo">echo — Clear, precise</option>
+          <option value="shimmer">shimmer — Soft, gentle</option>
+          <option value="ballad">ballad — Warm, expressive</option>
+          <option value="verse">verse — Articulate, composed</option>
+          <option value="cedar">cedar — Rich, natural</option>
+          <option value="marin">marin — Smooth, modern</option>
+        </select>
+        <span class="config-hint">All voices compatible with Realtime voice mode</span>
+      </div>
+      <div class="config-group">
+        <label class="config-label">System Info</label>
+        <div class="system-info">
+          <div>EVE v5.0 · Ultra · Node.js + Claude CLI</div>
+          <div>Warm Pool: Opus×1 Sonnet×3 Haiku×4</div>
+          <div>Conclave: Always Active (3 AI minds)</div>
+          <div>Voice: Realtime API + TTS (ash/coral/sage)</div>
+          <div>Screen Vision: Claude Sonnet 4.6</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pre-flight verification modal -->
+  <div id="preflight-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:9999; display:flex; align-items:center; justify-content:center;">
+    <div style="background:#0d1117; border:1px solid #1a3a5c; border-radius:16px; padding:36px 40px; max-width:480px; width:90%; color:#e0e0e0; font-family:'Inter',sans-serif;">
+      <h2 style="color:#00d4ff; font-size:18px; margin-bottom:6px; text-align:center;">EVE — System Verification</h2>
+      <p style="color:#888; font-size:11px; text-align:center; margin-bottom:24px;">Checking all systems before first use...</p>
+      <div id="preflight-checks" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="pf-item" data-key="openai_api"><span class="pf-icon">⏳</span> OpenAI API (GPT-4o-mini)</div>
+        <div class="pf-item" data-key="openai_realtime"><span class="pf-icon">⏳</span> Voice Realtime API</div>
+        <div class="pf-item" data-key="openai_tts"><span class="pf-icon">⏳</span> Text-to-Speech</div>
+        <div class="pf-item" data-key="claude_cli"><span class="pf-icon">⏳</span> Claude CLI</div>
+        <div class="pf-item" data-key="claude_execute"><span class="pf-icon">⏳</span> Claude Task Execution</div>
+      </div>
+      <div id="preflight-result" style="margin-top:20px; text-align:center; display:none;">
+        <p id="preflight-msg" style="font-size:13px; margin-bottom:14px;"></p>
+        <button id="preflight-ok" style="background:#00d4ff; color:#000; border:none; padding:10px 32px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">Start EVE</button>
+        <button id="preflight-retry" style="background:#333; color:#ccc; border:1px solid #555; padding:10px 24px; border-radius:8px; cursor:pointer; font-size:12px; margin-left:8px; display:none;">Retry</button>
+      </div>
+    </div>
+  </div>
+  <style>
+    .pf-item { display:flex; align-items:center; gap:10px; font-size:12px; padding:8px 12px; background:#161b22; border-radius:8px; border:1px solid #21262d; }
+    .pf-icon { font-size:14px; min-width:20px; text-align:center; }
+    .pf-ok .pf-icon { color:#00ff88; }
+    .pf-ok { border-color:#00ff88; }
+    .pf-err .pf-icon { color:#ff4444; }
+    .pf-err { border-color:#ff4444; }
+    .pf-err::after { content:attr(data-detail); display:block; font-size:10px; color:#ff8888; margin-top:3px; margin-left:30px; }
+  </style>
+
+  <script src="script.js"></script>
+</body>
+</html>

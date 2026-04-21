@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>J.A.R.V.I.S — Cockpit Iron Man</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ── Navbar ─────────────────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="nav-orb"></div>
+    <span class="nav-title">J·A·R·V·I·S</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-tab="principal">Principal</button>
+    <button class="nav-tab" data-tab="arquivo">Arquivo</button>
+    <button class="nav-tab" data-tab="config">Config</button>
+  </div>
+  <div class="nav-status">
+    <span class="status-dot"></span>
+    <span id="nav-model">HAIKU</span>
+  </div>
+</nav>
+
+<!-- ── Main Layout ────────────────────────────────────────────────────────── -->
+<main class="cockpit">
+
+  <!-- ── Left Panel ──────────────────────────────────────────────────────── -->
+  <aside class="panel-left">
+    <!-- Stat Cards -->
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="stat-label">SESSÃO</div>
+        <div class="stat-value" id="stat-session">00:00:00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">TOKENS</div>
+        <div class="stat-value" id="stat-tokens">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">PLANO</div>
+        <div class="stat-value cyan">ATIVO</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">REQUESTS</div>
+        <div class="stat-value" id="stat-requests">0</div>
+      </div>
+    </div>
+
+    <!-- Model Tiers -->
+    <div class="sys-block">
+      <div class="sys-block-title">MODELOS CLAUDE</div>
+      <div class="model-tier" id="tier-haiku">
+        <div class="tier-dot active"></div>
+        <div>
+          <div class="tier-name">Haiku 4.5</div>
+          <div class="tier-desc">Rápido · Chat · ACK</div>
+        </div>
+      </div>
+      <div class="model-tier" id="tier-sonnet">
+        <div class="tier-dot"></div>
+        <div>
+          <div class="tier-name">Sonnet 4.5</div>
+          <div class="tier-desc">Criativo · Análise</div>
+        </div>
+      </div>
+      <div class="model-tier" id="tier-opus">
+        <div class="tier-dot"></div>
+        <div>
+          <div class="tier-name">Opus 4.5</div>
+          <div class="tier-desc">Projetos · Arquitetura</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AIOX Agents -->
+    <div class="sys-block">
+      <div class="sys-block-title">AIOX AGENTS</div>
+      <div class="agent-grid">
+        <div class="agent-chip">@dev/Dex</div>
+        <div class="agent-chip">@arc/Aria</div>
+        <div class="agent-chip">@qa/Quinn</div>
+        <div class="agent-chip">@sm/River</div>
+        <div class="agent-chip">@po/Pax</div>
+        <div class="agent-chip">@ops/Gage</div>
+        <div class="agent-chip">@pm/Morgan</div>
+        <div class="agent-chip">@anl/Alex</div>
+        <div class="agent-chip">@ux/Uma</div>
+        <div class="agent-chip">@data/Dara</div>
+      </div>
+    </div>
+
+    <!-- Mega-brain -->
+    <div class="sys-block">
+      <div class="sys-block-title">MEGA-BRAIN</div>
+      <div class="megabrain-chip">
+        <div class="mb-icon">◈</div>
+        <div>
+          <div class="mb-label">Memória Semântica</div>
+          <div class="mb-status" id="mb-status">ONLINE</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Center Panel ─────────────────────────────────────────────────────── -->
+  <section class="panel-center">
+
+    <!-- Avatar Arc Reactor -->
+    <div class="avatar-wrap" id="avatar-wrap">
+      <div class="ring ring-3"></div>
+      <div class="ring ring-2"></div>
+      <div class="ring ring-1"></div>
+      <div class="avatar-arc">
+        <div class="arc-inner"></div>
+        <div class="arc-pulse"></div>
+      </div>
+      <div class="hud-corner hud-tl"></div>
+      <div class="hud-corner hud-tr"></div>
+      <div class="hud-corner hud-bl"></div>
+      <div class="hud-corner hud-br"></div>
+    </div>
+
+    <div class="orb-id-line">
+      <span class="orb-id-text">JARVIS // ID-7700-ALPHA</span>
+    </div>
+    <div class="avatar-status" id="avatar-status">AGUARDANDO COMANDO</div>
+
+    <!-- Terminal -->
+    <div class="terminal" id="terminal">
+      <div class="terminal-welcome">
+        <span class="ts">[BOOT]</span> J.A.R.V.I.S inicializado. Sistema operacional.
+      </div>
+    </div>
+
+    <!-- Input Bar -->
+    <div class="input-bar">
+      <button class="btn-icon" id="btn-wake" title="Ativar wake word 'Jarvis'">⚡</button>
+      <button class="btn-icon" id="btn-mic" title="Gravar voz">🎙️</button>
+      <button class="btn-icon" id="btn-attach" title="Anexar arquivo">📎</button>
+      <input type="file" id="file-input" style="display:none" />
+      <input class="msg-input" id="msg-input" type="text" placeholder="Digite uma mensagem para o JARVIS..." autocomplete="off" />
+      <button class="btn-send" id="btn-send">ENVIAR</button>
+    </div>
+    <div id="attach-name" class="attach-name"></div>
+  </section>
+
+  <!-- ── Right Panel ──────────────────────────────────────────────────────── -->
+  <aside class="panel-right">
+    <!-- Tab: Arquivo -->
+    <div class="tab-content" id="tab-arquivo" style="display:none">
+      <div class="sys-block-title">ARQUIVOS</div>
+      <div id="file-list" class="file-list">Carregando...</div>
+      <button class="btn-refresh" onclick="loadFiles()">↺ Atualizar</button>
+    </div>
+
+    <!-- Tab: Config -->
+    <div class="tab-content" id="tab-config" style="display:none">
+      <div class="sys-block-title">CONFIGURAÇÕES</div>
+      <div class="config-row">
+        <label>Voz TTS</label>
+        <select id="cfg-voice">
+          <option value="onyx" selected>Onyx (masculino)</option>
+          <option value="alloy">Alloy</option>
+          <option value="echo">Echo</option>
+          <option value="fable">Fable</option>
+          <option value="nova">Nova</option>
+          <option value="shimmer">Shimmer</option>
+        </select>
+      </div>
+      <div class="config-row">
+        <label>Resposta por voz</label>
+        <input type="checkbox" id="cfg-tts" checked />
+      </div>
+      <div class="config-row">
+        <label>Wake word</label>
+        <input type="checkbox" id="cfg-wake" checked />
+      </div>
+      <button class="btn-refresh" onclick="saveConfig()">Salvar</button>
+    </div>
+
+    <!-- Default: info panel -->
+    <div class="tab-content" id="tab-principal">
+      <div class="sys-block-title">SISTEMA</div>
+      <div class="info-row"><span>Backend</span><span class="cyan">Express 4</span></div>
+      <div class="info-row"><span>IA Core</span><span class="cyan">Claude Code CLI</span></div>
+      <div class="info-row"><span>STT</span><span class="cyan">Whisper-1</span></div>
+      <div class="info-row"><span>TTS</span><span class="cyan">OpenAI onyx</span></div>
+      <div class="info-row"><span>Memória</span><span class="cyan">Semântica + MD</span></div>
+      <div class="info-row"><span>Agentes</span><span class="cyan">10 AIOX</span></div>
+      <div class="info-row"><span>Porta</span><span class="cyan">3000</span></div>
+    </div>
+  </aside>
+
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>

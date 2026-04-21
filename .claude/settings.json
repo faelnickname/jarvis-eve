@@ -1,0 +1,45 @@
+{
+  "model": "claude-opus-4-6",
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/Gamer/Desktop/Jarvis/.claude/hooks/synapse-engine.cjs\" 2>/dev/null || true",
+            "timeout": 5,
+            "statusMessage": "⚡ SYNAPSE online..."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/Gamer/Desktop/Jarvis/.claude/hooks/precompact-session-digest.cjs\" 2>/dev/null || true",
+            "timeout": 10,
+            "statusMessage": "📦 Saving session digest..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\": \"🧠 EVE ONLINE — Conclave Mega-Brain ACTIVE | AIOX-CORE Agents LOADED | bypassPermissions ENABLED\"}' ",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
