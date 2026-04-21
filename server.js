@@ -451,15 +451,15 @@ async function executeTool(name, args, projectsDir) {
   }
 }
 
-async function geminiCallWithRetry(params, maxRetries = 4) {
+async function geminiCallWithRetry(params, maxRetries = 3) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await gemini.chat.completions.create(params);
     } catch (err) {
       const is429 = err?.status === 429 || err?.message?.includes('429');
       if (is429 && attempt < maxRetries) {
-        const wait = (attempt + 1) * 8000; // 8s, 16s, 24s, 32s
-        console.log(`[JARVIS] Gemini 429 — waiting ${wait/1000}s before retry ${attempt+1}/${maxRetries}`);
+        const wait = (attempt + 1) * 5000; // 5s, 10s, 15s
+        console.log(`[JARVIS] Gemini 429 — retry ${attempt + 1}/${maxRetries} in ${wait / 1000}s`);
         await new Promise(r => setTimeout(r, wait));
         continue;
       }
@@ -468,11 +468,21 @@ async function geminiCallWithRetry(params, maxRetries = 4) {
   }
 }
 
+const AGENT_SYSTEM = `EXECUTION RULES:
+- Return ALL tool calls needed in a SINGLE response — never one at a time
+- For an app with 5 files: return all 5 write_file calls simultaneously
+- For image + PDF: return generate_image and write_file in the same response
+- Minimize round-trips: batch everything possible into one tool_calls array
+- After tools complete, respond with a brief confirmation only`;
+
 async function runGeminiAgent(prompt, claudeModel, streamRes) {
   const model = toGeminiModel(claudeModel);
-  const messages = [{ role: 'user', content: prompt }];
+  const messages = [
+    { role: 'system', content: AGENT_SYSTEM },
+    { role: 'user', content: prompt }
+  ];
   let fullOutput = '';
-  const MAX_ITER = 20;
+  const MAX_ITER = 10;
 
   for (let i = 0; i < MAX_ITER; i++) {
     const response = await geminiCallWithRetry({
@@ -480,7 +490,7 @@ async function runGeminiAgent(prompt, claudeModel, streamRes) {
       messages,
       tools: JARVIS_TOOLS,
       tool_choice: 'auto',
-      max_tokens: 8192
+      max_tokens: 16384
     });
 
     const msg = response.choices[0].message;
@@ -493,29 +503,28 @@ async function runGeminiAgent(prompt, claudeModel, streamRes) {
 
     if (!msg.tool_calls || msg.tool_calls.length === 0) break;
 
-    const toolResults = [];
-    for (const tc of msg.tool_calls) {
-      let args = {};
-      try { args = JSON.parse(tc.function.arguments); } catch {}
+    // Execute all tool calls in parallel
+    if (streamRes) {
+      for (const tc of msg.tool_calls) {
+        let a = {}; try { a = JSON.parse(tc.function.arguments); } catch {}
+        const label = a.prompt || a.path || a.html_path || a.name || tc.function.name;
+        try { streamRes.write(`\n[system] ${tc.function.name}: ${label}...\n`); } catch {}
+      }
+    }
 
-      const label = args.prompt || args.path || args.html_path || args.name || tc.function.name;
-      const statusMsg = `\n[system] ${tc.function.name}: ${label}...\n`;
-      if (streamRes) try { streamRes.write(statusMsg); } catch {}
-
+    const toolResults = await Promise.all(msg.tool_calls.map(async tc => {
+      let args = {}; try { args = JSON.parse(tc.function.arguments); } catch {}
       let result;
       try { result = await executeTool(tc.function.name, args); }
       catch (err) { result = `Tool error: ${err.message}`; }
-
       if (typeof result === 'string' && result.includes('[file]')) {
         fullOutput += result + '\n';
         if (streamRes) try { streamRes.write(result + '\n'); } catch {}
       }
+      return { role: 'tool', tool_call_id: tc.id, content: String(result) };
+    }));
 
-      toolResults.push({ role: 'tool', tool_call_id: tc.id, content: String(result) });
-    }
     messages.push(...toolResults);
-    // Small pause between iterations to respect Gemini rate limits
-    if (i < MAX_ITER - 1 && msg.tool_calls?.length) await new Promise(r => setTimeout(r, 1500));
   }
 
   return fullOutput;
