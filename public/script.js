@@ -1158,45 +1158,88 @@ async function _ttsPlay(text) {
 }
 
 // ========== WAKE WORD DETECTION ==========
+let wakeCommandTimer = null;
+let wakeListeningForCommand = false;
+let wakeAccumulated = '';
+
 function startWakeWord() {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
-
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   wakeWordRecognition = new SpeechRec();
   wakeWordRecognition.continuous = true;
   wakeWordRecognition.interimResults = true;
-  wakeWordRecognition.lang = 'en-US';
+  wakeWordRecognition.lang = { BR: 'pt-BR', ES: 'es-ES', EN: 'en-US' }[currentLang] || 'pt-BR';
 
   wakeWordRecognition.onresult = (event) => {
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript.toLowerCase();
-      if (transcript.includes('eve')) {
-        // Wake word → activate Realtime voice (continuous mode)
-        if (!realtimeActive && !realtimeConnecting) {
+      const isFinal = event.results[i].isFinal;
+      const text = event.results[i][0].transcript.toLowerCase().trim();
+      const hasWake = /\b(eve|e\.v\.e|evy|ivy|evi|jarvis)\b/.test(text);
+
+      if (hasWake && !isRecording) {
+        // Extract command that came AFTER the wake word
+        const afterWake = text.replace(/.*?\b(eve|e\.v\.e|evy|ivy|evi|jarvis)\b[,.]?\s*/i, '').trim();
+
+        if (afterWake.length > 3) {
+          // Command is in the same phrase — send directly
+          playTone(880, 60);
+          addTerminalLine(`[wake] ${text}`, 'info-line');
+          sendMessage(afterWake, true);
+          wakeListeningForCommand = false;
+          clearTimeout(wakeCommandTimer);
+        } else if (!wakeListeningForCommand) {
+          // Just "EVE" alone — open mic for next phrase
+          wakeListeningForCommand = true;
+          wakeAccumulated = '';
+          playTone(880, 60);
           addTerminalLine(
-            currentLang === 'BR' ? '[info] Palavra-chave detectada — ativando voz contínua.' : '[info] Wake word detected — activating continuous voice.',
+            currentLang === 'BR' ? '[EVE] Ouvindo...' : '[EVE] Listening...',
             'info-line'
           );
-          startRealtime();
+          micBtn.classList.add('recording');
+          // 6-second window to capture command
+          wakeCommandTimer = setTimeout(() => {
+            wakeListeningForCommand = false;
+            micBtn.classList.remove('recording');
+            if (wakeAccumulated.trim().length > 2) {
+              sendMessage(wakeAccumulated.trim(), true);
+              wakeAccumulated = '';
+            }
+          }, 6000);
         }
-        break;
+      } else if (wakeListeningForCommand && !hasWake) {
+        // Accumulate command after wake word
+        if (isFinal) {
+          wakeAccumulated += ' ' + text;
+          clearTimeout(wakeCommandTimer);
+          if (wakeAccumulated.trim().length > 2) {
+            wakeListeningForCommand = false;
+            micBtn.classList.remove('recording');
+            sendMessage(wakeAccumulated.trim(), true);
+            wakeAccumulated = '';
+          }
+        }
       }
     }
   };
 
-  wakeWordRecognition.onend = () => {
-    if (wakeWordEnabled) wakeWordRecognition.start();
+  wakeWordRecognition.onerror = (e) => {
+    if (e.error !== 'no-speech') console.warn('[EVE] Wake word error:', e.error);
   };
-
+  wakeWordRecognition.onend = () => {
+    if (wakeWordEnabled) { try { wakeWordRecognition.start(); } catch {} }
+  };
   wakeWordRecognition.start();
 }
 
 function stopWakeWord() {
   if (wakeWordRecognition) {
     wakeWordEnabled = false;
-    wakeWordRecognition.stop();
+    try { wakeWordRecognition.stop(); } catch {}
     wakeWordRecognition = null;
   }
+  wakeListeningForCommand = false;
+  clearTimeout(wakeCommandTimer);
 }
 
 // ========== TAB NAVIGATION ==========
@@ -1398,15 +1441,12 @@ chatInput.addEventListener('keydown', (e) => {
 });
 
 micBtn.addEventListener('click', () => {
-  // Push-to-talk: mic button is the ONLY way to start/stop voice (besides wake word)
   userGestureReceived = true;
-  // startRealtime() already toggles internally (stops if active, starts if not)
-  startRealtime().then(() => {
-    if (realtimeActive) micBtn.classList.add('recording');
-    else micBtn.classList.remove('recording');
-  }).catch(() => {
-    micBtn.classList.remove('recording');
-  });
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
 });
 
 // Terminal direct input
@@ -1441,6 +1481,12 @@ initLangToggle();
 initConclaveToggle();
 initContinuousBtn();
 initRealtimeBtn();
+
+// Wake word ON by default — user just says "EVE" to activate
+wakeWordEnabled = true;
+setTimeout(() => {
+  try { startWakeWord(); } catch {}
+}, 1500);
 
 
 // ── PUSH NOTIFICATION CHANNEL ──────────────────────────────────────────────
