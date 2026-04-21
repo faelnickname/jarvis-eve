@@ -63,30 +63,41 @@ async function callGemini(prompt, claudeModel = 'claude-sonnet-4-6', streamRes =
       ]
     : prompt;
 
-  if (streamRes) {
-    const stream = await gemini.chat.completions.create({
-      model,
-      messages: [{ role: 'user', content: userContent }],
-      stream: true,
-      max_tokens: 8192
-    });
-    let full = '';
-    for await (const chunk of stream) {
-      const text = chunk.choices[0]?.delta?.content || '';
-      if (text) {
-        full += text;
-        try { streamRes.write(text); } catch {}
+  const tryCall = async (attempt = 0) => {
+    try {
+      if (streamRes) {
+        const stream = await gemini.chat.completions.create({
+          model,
+          messages: [{ role: 'user', content: userContent }],
+          stream: true,
+          max_tokens: 8192
+        });
+        let full = '';
+        for await (const chunk of stream) {
+          const text = chunk.choices[0]?.delta?.content || '';
+          if (text) { full += text; try { streamRes.write(text); } catch {} }
+        }
+        return full;
+      } else {
+        const resp = await gemini.chat.completions.create({
+          model,
+          messages: [{ role: 'user', content: userContent }],
+          max_tokens: 8192
+        });
+        return resp.choices[0]?.message?.content || '';
       }
+    } catch (err) {
+      const is429 = err?.status === 429 || err?.message?.includes('429');
+      if (is429 && attempt < 3) {
+        const wait = (attempt + 1) * 8000;
+        console.log(`[JARVIS] Gemini 429 callGemini — retry in ${wait/1000}s`);
+        await new Promise(r => setTimeout(r, wait));
+        return tryCall(attempt + 1);
+      }
+      throw err;
     }
-    return full;
-  } else {
-    const resp = await gemini.chat.completions.create({
-      model,
-      messages: [{ role: 'user', content: userContent }],
-      max_tokens: 8192
-    });
-    return resp.choices[0]?.message?.content || '';
-  }
+  };
+  return tryCall();
 }
 
 
@@ -440,6 +451,23 @@ async function executeTool(name, args, projectsDir) {
   }
 }
 
+async function geminiCallWithRetry(params, maxRetries = 4) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await gemini.chat.completions.create(params);
+    } catch (err) {
+      const is429 = err?.status === 429 || err?.message?.includes('429');
+      if (is429 && attempt < maxRetries) {
+        const wait = (attempt + 1) * 8000; // 8s, 16s, 24s, 32s
+        console.log(`[JARVIS] Gemini 429 — waiting ${wait/1000}s before retry ${attempt+1}/${maxRetries}`);
+        await new Promise(r => setTimeout(r, wait));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 async function runGeminiAgent(prompt, claudeModel, streamRes) {
   const model = toGeminiModel(claudeModel);
   const messages = [{ role: 'user', content: prompt }];
@@ -447,7 +475,7 @@ async function runGeminiAgent(prompt, claudeModel, streamRes) {
   const MAX_ITER = 20;
 
   for (let i = 0; i < MAX_ITER; i++) {
-    const response = await gemini.chat.completions.create({
+    const response = await geminiCallWithRetry({
       model,
       messages,
       tools: JARVIS_TOOLS,
@@ -470,7 +498,7 @@ async function runGeminiAgent(prompt, claudeModel, streamRes) {
       let args = {};
       try { args = JSON.parse(tc.function.arguments); } catch {}
 
-      const label = args.path || args.html_path || args.name || tc.function.name;
+      const label = args.prompt || args.path || args.html_path || args.name || tc.function.name;
       const statusMsg = `\n[system] ${tc.function.name}: ${label}...\n`;
       if (streamRes) try { streamRes.write(statusMsg); } catch {}
 
@@ -486,6 +514,8 @@ async function runGeminiAgent(prompt, claudeModel, streamRes) {
       toolResults.push({ role: 'tool', tool_call_id: tc.id, content: String(result) });
     }
     messages.push(...toolResults);
+    // Small pause between iterations to respect Gemini rate limits
+    if (i < MAX_ITER - 1 && msg.tool_calls?.length) await new Promise(r => setTimeout(r, 1500));
   }
 
   return fullOutput;
