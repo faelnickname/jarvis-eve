@@ -44,7 +44,7 @@ const gemini = new OpenAI({
 });
 
 const GEMINI_MODEL_MAP = {
-  'claude-opus-4-6':          'gemini-2.5-flash-preview-04-17',
+  'claude-opus-4-6':          'gemini-2.0-flash',
   'claude-sonnet-4-6':        'gemini-2.0-flash',
   'claude-haiku-4-5-20251001':'gemini-2.0-flash-lite',
 };
@@ -94,13 +94,18 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 
 const attachments = new Map();
 
 // ========== GEMINI HEALTH CHECK ==========
-let geminiAvailable = false;
-let geminiChecking = true;
-let geminiError = '';
+// Optimistic: if key exists, assume available. Verify in background.
+let geminiAvailable = !!process.env.GEMINI_API_KEY;
+let geminiChecking = false;
+let geminiError = geminiAvailable ? '' : 'GEMINI_API_KEY not set in .env';
 
 async function checkGeminiAuth() {
+  if (!process.env.GEMINI_API_KEY) {
+    geminiAvailable = false;
+    geminiError = 'GEMINI_API_KEY not set in .env';
+    return;
+  }
   try {
-    if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set in .env');
     const resp = await gemini.chat.completions.create({
       model: 'gemini-2.0-flash-lite',
       messages: [{ role: 'user', content: 'say OK' }],
@@ -110,15 +115,19 @@ async function checkGeminiAuth() {
       geminiAvailable = true;
       geminiError = '';
       console.log('[JARVIS] ✅ Gemini API: authenticated and working');
-    } else {
-      throw new Error('Empty response');
     }
   } catch (err) {
-    geminiAvailable = false;
-    geminiError = err.message?.slice(0, 200) || 'Unknown error';
-    console.error(`[JARVIS] ❌ Gemini: ${geminiError}`);
-  } finally {
-    geminiChecking = false;
+    const msg = err.message?.slice(0, 200) || 'Unknown error';
+    // 429 = rate limit, keep available=true (key is valid, just throttled)
+    if (msg.includes('429')) {
+      geminiAvailable = true;
+      geminiError = '';
+      console.log('[JARVIS] ✅ Gemini API: key valid (rate limit on startup ping, will clear)');
+    } else {
+      geminiAvailable = false;
+      geminiError = msg;
+      console.error(`[JARVIS] ❌ Gemini: ${msg}`);
+    }
   }
 }
 
