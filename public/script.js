@@ -15,15 +15,18 @@ let mediaRecorder = null;
 let audioChunks = [];
 let currentAttachment = null;
 let voiceEnabled = true;
-let ttsVoice = localStorage.getItem('ttsVoice') || 'ash';
+let ttsVoice = localStorage.getItem('ttsVoice') || 'nova';
 
 // Realtime API supports a different voice set than TTS.
-// Map TTS voice to nearest valid Realtime voice.
+// Map TTS/ElevenLabs voices to nearest valid Realtime voice.
 const REALTIME_VOICES = new Set(['alloy','ash','ballad','coral','echo','sage','shimmer','verse','marin','cedar']);
-const REALTIME_VOICE_MAP = { onyx: 'ash', nova: 'shimmer', fable: 'sage' };
+const REALTIME_VOICE_MAP = {
+  onyx: 'ash', nova: 'shimmer', fable: 'sage',
+  'el-rachel': 'shimmer', 'el-bella': 'coral', 'el-elli': 'shimmer', 'el-charlotte': 'sage'
+};
 function getRealtimeVoice() {
   if (REALTIME_VOICES.has(ttsVoice)) return ttsVoice;
-  return REALTIME_VOICE_MAP[ttsVoice] || 'ash';
+  return REALTIME_VOICE_MAP[ttsVoice] || 'shimmer';
 }
 
 let wakeWordEnabled = false;

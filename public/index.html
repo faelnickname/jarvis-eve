@@ -396,27 +396,35 @@
       <div class="config-group">
         <label class="config-label">TTS Voice</label>
         <select class="config-select" id="config-tts-voice">
-          <option value="ash">ash — Confident, clear (default)</option>
-          <option value="coral">coral — Bright, energetic</option>
-          <option value="sage">sage — Calm, thoughtful</option>
-          <option value="alloy">alloy — Neutral, balanced</option>
-          <option value="echo">echo — Clear, precise</option>
-          <option value="shimmer">shimmer — Soft, gentle</option>
-          <option value="ballad">ballad — Warm, expressive</option>
-          <option value="verse">verse — Articulate, composed</option>
-          <option value="cedar">cedar — Rich, natural</option>
-          <option value="marin">marin — Smooth, modern</option>
+          <optgroup label="★ ElevenLabs — Ultra-Realistic (requires key)">
+            <option value="el-rachel">Rachel — Natural, calm (ElevenLabs)</option>
+            <option value="el-bella">Bella — Warm, friendly (ElevenLabs)</option>
+            <option value="el-elli">Elli — Young, expressive (ElevenLabs)</option>
+            <option value="el-charlotte">Charlotte — British, elegant (ElevenLabs)</option>
+          </optgroup>
+          <optgroup label="OpenAI HD — Female">
+            <option value="nova">Nova — Warm, natural ✦ default</option>
+            <option value="shimmer">Shimmer — Soft, gentle</option>
+            <option value="coral">Coral — Bright, energetic</option>
+            <option value="alloy">Alloy — Neutral, balanced</option>
+            <option value="sage">Sage — Calm, thoughtful</option>
+            <option value="fable">Fable — Expressive, storytelling</option>
+          </optgroup>
+          <optgroup label="OpenAI HD — Male">
+            <option value="ash">Ash — Confident, clear</option>
+            <option value="echo">Echo — Clear, precise</option>
+            <option value="onyx">Onyx — Deep, authoritative</option>
+          </optgroup>
         </select>
-        <span class="config-hint">All voices compatible with Realtime voice mode</span>
+        <span class="config-hint">ElevenLabs = ultra-realistic · HD = high-quality · Add ELEVENLABS_API_KEY to unlock</span>
       </div>
       <div class="config-group">
         <label class="config-label">System Info</label>
         <div class="system-info">
-          <div>EVE v5.0 · Ultra · Node.js + Claude CLI</div>
-          <div>Warm Pool: Opus×1 Sonnet×3 Haiku×4</div>
+          <div>EVE v5.0 · Ultra · Node.js + Gemini 2.0</div>
           <div>Conclave: Always Active (3 AI minds)</div>
-          <div>Voice: Realtime API + TTS (ash/coral/sage)</div>
-          <div>Screen Vision: Claude Sonnet 4.6</div>
+          <div>Voice: Realtime API + TTS-HD (nova/shimmer/coral)</div>
+          <div>Screen Vision: GPT-4o Vision</div>
         </div>
       </div>
     </div>

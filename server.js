@@ -1445,23 +1445,54 @@ Be direct and concise. Focus on what the user is asking about.`;
   }
 });
 
-// POST /api/tts - Voice Synthesis (OpenAI Speech)
+// ElevenLabs voice IDs — top humanized female voices
+const ELEVENLABS_VOICES = {
+  'el-rachel': '21m00Tcm4TlvDq8ikWAM', // Rachel — calm, clear, natural
+  'el-bella':  'EXAVITQu4vr4xnSDxMaL', // Bella  — warm, friendly
+  'el-elli':   'MF3mGyEYCl7XYWbV9V6O', // Elli   — young, expressive
+  'el-sarah':  'EXAVITQu4vr4xnSDxMaL', // Sarah  — professional
+  'el-charlotte': 'XB0fDUnXU5powFXDhCwa', // Charlotte — British, elegant
+};
+
+// POST /api/tts - Voice Synthesis (ElevenLabs preferred, OpenAI tts-1-hd fallback)
 app.post('/api/tts', async (req, res) => {
   try {
-    if (!openai) return res.status(500).json({ error: 'OpenAI API key not configured' });
     const { text, language = 'EN', voice: requestedVoice } = req.body;
     if (!text) return res.status(400).json({ error: 'Text required' });
 
-    // User-selected voice takes priority. Fallback: onyx (EN) / nova (BR)
-    const VALID_VOICES = ['alloy','ash','coral','echo','fable','nova','onyx','sage','shimmer'];
-    const voice = VALID_VOICES.includes(requestedVoice) ? requestedVoice
-      : (language === 'BR' ? 'nova' : 'onyx');
+    // ElevenLabs path (ultra-realistic humanized voices)
+    const elKey = process.env.ELEVENLABS_API_KEY;
+    if (elKey && requestedVoice && ELEVENLABS_VOICES[requestedVoice]) {
+      const voiceId = ELEVENLABS_VOICES[requestedVoice];
+      const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': elKey,
+          'Content-Type': 'application/json',
+          'Accept': 'audio/mpeg'
+        },
+        body: JSON.stringify({
+          text: text.slice(0, 500),
+          model_id: 'eleven_multilingual_v2',
+          voice_settings: { stability: 0.45, similarity_boost: 0.80, style: 0.3, use_speaker_boost: true }
+        })
+      });
+      if (elRes.ok) {
+        const buf = Buffer.from(await elRes.arrayBuffer());
+        res.setHeader('Content-Type', 'audio/mpeg');
+        return res.send(buf);
+      }
+      console.warn('[JARVIS] ElevenLabs TTS failed, falling back to OpenAI');
+    }
 
-    const mp3 = await openai.audio.speech.create({
-      model: 'tts-1',
-      voice,
-      input: text
-    });
+    // OpenAI tts-1-hd fallback
+    if (!openai) return res.status(500).json({ error: 'No TTS provider configured' });
+    const OAI_FEMALE = ['nova', 'shimmer', 'coral', 'alloy', 'fable', 'sage'];
+    const OAI_ALL    = [...OAI_FEMALE, 'ash', 'echo', 'onyx'];
+    const voice = OAI_ALL.includes(requestedVoice) ? requestedVoice
+      : (language === 'BR' ? 'nova' : 'nova');
+
+    const mp3 = await openai.audio.speech.create({ model: 'tts-1-hd', voice, input: text });
     const buffer = Buffer.from(await mp3.arrayBuffer());
     res.setHeader('Content-Type', 'audio/mpeg');
     res.send(buffer);
