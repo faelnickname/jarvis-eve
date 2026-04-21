@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import os from 'os';
-import { execSync } from 'child_process';
+import { execSync, execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -131,6 +131,221 @@ async function checkGeminiAuth() {
   }
 }
 
+
+// ========== JARVIS AGENT TOOLS — Gemini function calling ==========
+const JARVIS_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'write_file',
+      description: 'Create or overwrite a file with content. Use for HTML, CSS, JS, Python, markdown, CSV, JSON, txt, and any text file.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Path relative to projects dir, e.g. "my-project/index.html"' },
+          content: { type: 'string', description: 'Full file content' }
+        },
+        required: ['path', 'content']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'read_file',
+      description: 'Read an existing file content.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'File path (relative to projects dir or absolute)' }
+        },
+        required: ['path']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_files',
+      description: 'List files in the projects directory or a subdirectory.',
+      parameters: {
+        type: 'object',
+        properties: {
+          directory: { type: 'string', description: 'Subdirectory (optional)' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_pdf',
+      description: 'Convert an HTML file to PDF. HTML must exist first (create with write_file).',
+      parameters: {
+        type: 'object',
+        properties: {
+          html_path: { type: 'string', description: 'Relative path to HTML file, e.g. "my-project/report.html"' },
+          pdf_path: { type: 'string', description: 'Output PDF path, e.g. "my-project/report.pdf"' }
+        },
+        required: ['html_path', 'pdf_path']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'run_python',
+      description: 'Execute Python code and return output. Use for data processing, Excel, calculations, charts.',
+      parameters: {
+        type: 'object',
+        properties: {
+          code: { type: 'string', description: 'Python code to execute' }
+        },
+        required: ['code']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'find_file',
+      description: 'Search for a file by name.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Filename or partial name' }
+        },
+        required: ['name']
+      }
+    }
+  }
+];
+
+async function executeTool(name, args, projectsDir) {
+  const PDIR = projectsDir || PROJECTS_DIR;
+  switch (name) {
+    case 'write_file': {
+      const fp = path.isAbsolute(args.path) ? args.path : path.join(PDIR, args.path);
+      fs.mkdirSync(path.dirname(fp), { recursive: true });
+      fs.writeFileSync(fp, args.content, 'utf-8');
+      return `[file] ${path.basename(fp)} | ${fp}\nCreated (${Buffer.byteLength(args.content, 'utf-8')} bytes)`;
+    }
+    case 'read_file': {
+      const fp = path.isAbsolute(args.path) ? args.path : path.join(PDIR, args.path);
+      if (!fs.existsSync(fp)) return `File not found: ${fp}`;
+      return fs.readFileSync(fp, 'utf-8').slice(0, 50000);
+    }
+    case 'list_files': {
+      const dir = args.directory ? path.join(PDIR, args.directory) : PDIR;
+      if (!fs.existsSync(dir)) return 'Directory not found';
+      const files = [];
+      function walk(d, depth = 0) {
+        if (depth > 4) return;
+        try {
+          for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+            if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+            const full = path.join(d, e.name);
+            if (e.isDirectory()) walk(full, depth + 1);
+            else files.push(full.replace(PDIR + path.sep, '').replace(PDIR + '/', ''));
+          }
+        } catch {}
+      }
+      walk(dir);
+      return files.length ? files.join('\n') : 'Empty directory';
+    }
+    case 'create_pdf': {
+      const htmlFp = path.join(PDIR, args.html_path);
+      const pdfFp = path.join(PDIR, args.pdf_path);
+      if (!fs.existsSync(htmlFp)) return `HTML not found: ${htmlFp}. Create it first with write_file.`;
+      fs.mkdirSync(path.dirname(pdfFp), { recursive: true });
+      await htmlToPdf(htmlFp, pdfFp);
+      const stat = fs.statSync(pdfFp);
+      return `[file] ${path.basename(pdfFp)} | ${pdfFp}\nPDF created (${(stat.size / 1024).toFixed(1)} KB)`;
+    }
+    case 'run_python': {
+      if (!HAS_PYTHON) return 'Python not available on this system';
+      const tmp = path.join(os.tmpdir(), `jarvis_${Date.now()}.py`);
+      fs.writeFileSync(tmp, args.code, 'utf-8');
+      return new Promise((resolve) => {
+        execFile(PYTHON_CMD, [tmp], { timeout: 30000, maxBuffer: 5 * 1024 * 1024 }, (err, stdout, stderr) => {
+          try { fs.unlinkSync(tmp); } catch {}
+          if (err && !stdout) resolve(`Error: ${stderr || err.message}`);
+          else resolve(stdout || 'Executed successfully (no output)');
+        });
+      });
+    }
+    case 'find_file': {
+      const results = [];
+      const nl = args.name.toLowerCase();
+      const dirs = [PDIR, path.join(os.homedir(), 'Desktop'), path.join(os.homedir(), 'Downloads'), path.join(os.homedir(), 'Documents')];
+      function search(dir, depth = 0) {
+        if (depth > 3) return;
+        try {
+          for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+            const full = path.join(dir, e.name);
+            if (e.isDirectory()) search(full, depth + 1);
+            else if (e.name.toLowerCase().includes(nl)) results.push(full);
+          }
+        } catch {}
+      }
+      for (const d of dirs) search(d);
+      return results.length ? results.slice(0, 10).join('\n') : 'File not found';
+    }
+    default: return `Unknown tool: ${name}`;
+  }
+}
+
+async function runGeminiAgent(prompt, claudeModel, streamRes) {
+  const model = toGeminiModel(claudeModel);
+  const messages = [{ role: 'user', content: prompt }];
+  let fullOutput = '';
+  const MAX_ITER = 12;
+
+  for (let i = 0; i < MAX_ITER; i++) {
+    const response = await gemini.chat.completions.create({
+      model,
+      messages,
+      tools: JARVIS_TOOLS,
+      tool_choice: 'auto',
+      max_tokens: 8192
+    });
+
+    const msg = response.choices[0].message;
+    messages.push({ role: 'assistant', content: msg.content || null, tool_calls: msg.tool_calls });
+
+    if (msg.content) {
+      fullOutput += msg.content;
+      if (streamRes) try { streamRes.write(msg.content); } catch {}
+    }
+
+    if (!msg.tool_calls || msg.tool_calls.length === 0) break;
+
+    const toolResults = [];
+    for (const tc of msg.tool_calls) {
+      let args = {};
+      try { args = JSON.parse(tc.function.arguments); } catch {}
+
+      const label = args.path || args.html_path || args.name || tc.function.name;
+      const statusMsg = `\n[system] ${tc.function.name}: ${label}...\n`;
+      if (streamRes) try { streamRes.write(statusMsg); } catch {}
+
+      let result;
+      try { result = await executeTool(tc.function.name, args); }
+      catch (err) { result = `Tool error: ${err.message}`; }
+
+      if (typeof result === 'string' && result.includes('[file]')) {
+        fullOutput += result + '\n';
+        if (streamRes) try { streamRes.write(result + '\n'); } catch {}
+      }
+
+      toolResults.push({ role: 'tool', tool_call_id: tc.id, content: String(result) });
+    }
+    messages.push(...toolResults);
+  }
+
+  return fullOutput;
+}
 
 // ========== IN-MEMORY CACHE — Avoid disk reads on every request ==========
 const _cache = {
@@ -669,6 +884,14 @@ PLANILHAS — acesso em tempo real a arquivos Excel (abertos ou fechados):
   - Editar ao vivo: POST /api/excel-live {action:"write", path, sheet?, operations:[{cell:"A1",value:"x"},...]} → edita pasta aberta, mudanças aparecem na tela imediatamente, sem fechar
   - Listar abertas: POST /api/excel-live {action:"list"} → mostra todas as pastas abertas no Excel
   - PREFIRA os endpoints live quando o Excel estiver aberto — mudanças aparecem em tempo real
+FERRAMENTAS DISPONÍVEIS (use-as diretamente — não fale sobre elas):
+  - write_file(path, content): Cria ou sobrescreve um arquivo no servidor
+  - read_file(path): Lê o conteúdo de um arquivo existente
+  - list_files(dir?): Lista arquivos em um diretório (padrão: Documents and Projects)
+  - find_file(name): Encontra um arquivo pelo nome
+  - run_python(code): Executa código Python (pandas, openpyxl, etc.)
+  - create_pdf(html_path, pdf_path): Converte HTML existente em PDF (crie o HTML com write_file primeiro)
+REGRA DE EXECUÇÃO: Use write_file para criar arquivos, read_file para ler antes de editar, run_python para gerar Excel/dados. Emita [file] path após criar cada arquivo.
 IDIOMA (REGRA ABSOLUTA): Cada palavra no output — incluindo conteúdo de arquivos, labels HTML, títulos, comentários — DEVE estar em Português. Zero exceções.
 ${projectContext ? `\nCONTEXTO DO PROJETO:\n${projectContext}` : ''}`;
     } else {
@@ -689,6 +912,14 @@ SPREADSHEETS — full real-time access to Excel files (open or closed):
   - Live write:   POST /api/excel-live {action:"write", path, sheet?, operations:[{cell:"A1",value:"x"},...]} → edits open workbook, changes appear on screen immediately, no close needed
   - List open:    POST /api/excel-live {action:"list"} → shows all open Excel workbooks
   - PREFER live endpoints when Excel is open — changes appear in real-time without closing
+AVAILABLE TOOLS (use them directly — don't talk about them):
+  - write_file(path, content): Create or overwrite a file on the server
+  - read_file(path): Read the content of an existing file
+  - list_files(dir?): List files in a directory (default: Documents and Projects)
+  - find_file(name): Find a file by name
+  - run_python(code): Execute Python code (pandas, openpyxl, etc.)
+  - create_pdf(html_path, pdf_path): Convert existing HTML to PDF (create HTML with write_file first)
+EXECUTION RULE: Use write_file to create files, read_file before editing, run_python to generate Excel/data. Emit [file] path after creating each file.
 LANGUAGE (ABSOLUTE RULE): Every single word in your output — including file content, HTML labels, chart titles, button text, comments, variable names, reports — MUST be in English. Zero exceptions.
 ${projectContext ? `\nPROJECT CONTEXT:\n${projectContext}` : ''}`;
     }
@@ -924,12 +1155,12 @@ app.post('/api/chat', async (req, res) => {
     const prompt = buildJarvisPrompt(fullMessage, semanticContext + metaContext, false, language, model, conclaveEnabled);
 
     try {
-      const responseBuffer = await callGemini(prompt, model, res);
+      const responseBuffer = await runGeminiAgent(prompt, model, res);
       const elapsed = Date.now() - t0;
       sessionStats.tokensOut += Math.ceil(responseBuffer.length / 4);
       sessionStats.lastLatency = elapsed;
       const tier = model.includes('opus') ? 'Pro' : model.includes('sonnet') ? 'Flash' : 'Lite';
-      console.log(`[JARVIS] ⚡ Gemini ${tier} → ${elapsed}ms`);
+      console.log(`[JARVIS] ⚡ Gemini Agent ${tier} → ${elapsed}ms`);
       setImmediate(() => {
         appendHistoryFast('user', message);
         appendHistoryFast('jarvis', responseBuffer);
