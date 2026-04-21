@@ -218,6 +218,74 @@ const JARVIS_TOOLS = [
         required: ['name']
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'generate_image',
+      description: 'Generate an AI image from a text prompt. Free, unlimited. Saves as PNG. ALWAYS use this when user asks for any image, illustration, photo, banner, poster, or visual.',
+      parameters: {
+        type: 'object',
+        properties: {
+          prompt:   { type: 'string', description: 'Detailed English description of the image. Include style, colors, mood, composition.' },
+          filename: { type: 'string', description: 'Output path relative to projects dir, e.g. "my-project/banner.png"' },
+          width:    { type: 'number', description: 'Width in pixels (default 1024, max 2048)' },
+          height:   { type: 'number', description: 'Height in pixels (default 1024, max 2048)' },
+          style:    { type: 'string', description: 'Style: realistic, digital-art, watercolor, minimalist, flat-design, 3d-render, anime, cinematic, etc.' }
+        },
+        required: ['prompt', 'filename']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'run_ffmpeg',
+      description: 'Run FFmpeg for any video or audio operation: create, edit, trim, merge, resize, add subtitles, change speed, add audio, convert format, add text overlays, etc.',
+      parameters: {
+        type: 'object',
+        properties: {
+          args: { type: 'array', items: { type: 'string' }, description: 'FFmpeg arguments without "ffmpeg" prefix. Relative file paths are resolved to projects dir automatically.' },
+          description: { type: 'string', description: 'What this command does (for logging)' }
+        },
+        required: ['args']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_slideshow',
+      description: 'Create a professional video slideshow from a list of images. Use after generating images with generate_image.',
+      parameters: {
+        type: 'object',
+        properties: {
+          images:             { type: 'array', items: { type: 'string' }, description: 'Image file paths (relative to projects dir)' },
+          output:             { type: 'string', description: 'Output video path, e.g. "my-project/slideshow.mp4"' },
+          duration_per_image: { type: 'number', description: 'Seconds per image (default 3)' },
+          fps:                { type: 'number', description: 'Frames per second (default 30)' },
+          transition:         { type: 'string', description: 'Transition style: fade (default), none' }
+        },
+        required: ['images', 'output']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'scaffold_app',
+      description: 'Create a complete application project structure with all files. Use for web apps, APIs, Python scripts, dashboards, games, or any multi-file project.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name:        { type: 'string', description: 'Project folder name' },
+          type:        { type: 'string', description: 'App type: web, landing-page, dashboard, api, python-cli, game, portfolio, calculator, chat, etc.' },
+          description: { type: 'string', description: 'Full description of what the app should do, its features, and design' },
+          tech:        { type: 'string', description: 'Tech stack: html-css-js (default), react, vue, flask, fastapi, etc.' }
+        },
+        required: ['name', 'type', 'description']
+      }
+    }
   }
 ];
 
@@ -292,6 +360,82 @@ async function executeTool(name, args, projectsDir) {
       for (const d of dirs) search(d);
       return results.length ? results.slice(0, 10).join('\n') : 'File not found';
     }
+    case 'generate_image': {
+      const { prompt, filename = 'image.png', width = 1024, height = 1024, style = '' } = args;
+      const fullPrompt = style ? `${prompt}, ${style} style, high quality` : `${prompt}, high quality`;
+      const encoded = encodeURIComponent(fullPrompt);
+      const seed = Date.now() % 99999;
+      const url = `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&nologo=true&enhance=true&seed=${seed}`;
+      const response = await fetch(url);
+      if (!response.ok) return `Image generation failed: HTTP ${response.status}`;
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const ext = filename.match(/\.(png|jpg|jpeg|webp)$/i)?.[0] || '.png';
+      const fname = filename.endsWith(ext) ? filename : filename + ext;
+      const fp = path.isAbsolute(fname) ? fname : path.join(PDIR, fname);
+      fs.mkdirSync(path.dirname(fp), { recursive: true });
+      fs.writeFileSync(fp, buffer);
+      return `[file] ${path.basename(fp)} | ${fp}\nImage generated (${(buffer.length/1024).toFixed(1)} KB, ${width}×${height}px)`;
+    }
+    case 'run_ffmpeg': {
+      const { args: ffArgs, description: desc = '' } = args;
+      if (!Array.isArray(ffArgs)) return 'args must be an array';
+      const resolved = ffArgs.map(a => {
+        if (!a.startsWith('-') && a.includes('.') && !a.match(/^\d+(\.\d+)?$/)) {
+          return path.isAbsolute(a) ? a : path.join(PDIR, a);
+        }
+        return a;
+      });
+      const outFile = resolved[resolved.length - 1];
+      if (outFile && !outFile.startsWith('-')) fs.mkdirSync(path.dirname(outFile), { recursive: true });
+      return new Promise(resolve => {
+        execFile('ffmpeg', ['-y', ...resolved], { timeout: 180000, maxBuffer: 20 * 1024 * 1024, cwd: PDIR }, (err, stdout, stderr) => {
+          if (err && stderr && !stderr.includes('video:') && !stderr.includes('muxing overhead')) {
+            resolve(`FFmpeg error: ${stderr.slice(-600)}`);
+          } else if (outFile && fs.existsSync(outFile)) {
+            const stat = fs.statSync(outFile);
+            resolve(`[file] ${path.basename(outFile)} | ${outFile}\nVideo ready (${(stat.size/1024/1024).toFixed(2)} MB)`);
+          } else {
+            resolve(`FFmpeg done: ${stderr.slice(-200)}`);
+          }
+        });
+      });
+    }
+    case 'create_slideshow': {
+      const { images, output, duration_per_image = 3, fps = 30 } = args;
+      if (!images?.length) return 'No images provided';
+      const resolved = images.map(img => path.isAbsolute(img) ? img : path.join(PDIR, img));
+      const outPath = path.isAbsolute(output) ? output : path.join(PDIR, output);
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      const listFile = path.join(os.tmpdir(), `eve_slide_${Date.now()}.txt`);
+      const listContent = resolved.map(img => `file '${img.replace(/'/g, "'\\''")}'\nduration ${duration_per_image}`).join('\n')
+        + `\nfile '${resolved[resolved.length-1].replace(/'/g, "'\\''")}'`;
+      fs.writeFileSync(listFile, listContent);
+      const ffArgs = [
+        '-f', 'concat', '-safe', '0', '-i', listFile,
+        '-vf', `scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black,fps=${fps}`,
+        '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p', outPath
+      ];
+      return new Promise(resolve => {
+        execFile('ffmpeg', ['-y', ...ffArgs], { timeout: 300000, maxBuffer: 20 * 1024 * 1024 }, (err, stdout, stderr) => {
+          try { fs.unlinkSync(listFile); } catch {}
+          if (err && stderr && !stderr.includes('video:')) {
+            resolve(`Slideshow error: ${stderr.slice(-600)}`);
+          } else if (fs.existsSync(outPath)) {
+            const stat = fs.statSync(outPath);
+            resolve(`[file] ${path.basename(outPath)} | ${outPath}\nSlideshow created (${(stat.size/1024/1024).toFixed(2)} MB, ${images.length} imgs × ${duration_per_image}s)`);
+          } else {
+            resolve(`Slideshow failed — no output file`);
+          }
+        });
+      });
+    }
+    case 'scaffold_app': {
+      // scaffold_app just returns a directive for the model to call write_file multiple times
+      const { name, type, description: desc, tech = 'html-css-js' } = args;
+      const dir = path.join(PDIR, name);
+      fs.mkdirSync(dir, { recursive: true });
+      return `App scaffold started for "${name}" (${type}, ${tech}).\nProject dir: ${dir}\nNow create all files with write_file tool. Start with index.html (or main entry), then CSS, JS, and any supporting files. Make it complete and functional.`;
+    }
     default: return `Unknown tool: ${name}`;
   }
 }
@@ -300,7 +444,7 @@ async function runGeminiAgent(prompt, claudeModel, streamRes) {
   const model = toGeminiModel(claudeModel);
   const messages = [{ role: 'user', content: prompt }];
   let fullOutput = '';
-  const MAX_ITER = 12;
+  const MAX_ITER = 20;
 
   for (let i = 0; i < MAX_ITER; i++) {
     const response = await gemini.chat.completions.create({
@@ -884,14 +1028,24 @@ PLANILHAS — acesso em tempo real a arquivos Excel (abertos ou fechados):
   - Editar ao vivo: POST /api/excel-live {action:"write", path, sheet?, operations:[{cell:"A1",value:"x"},...]} → edita pasta aberta, mudanças aparecem na tela imediatamente, sem fechar
   - Listar abertas: POST /api/excel-live {action:"list"} → mostra todas as pastas abertas no Excel
   - PREFIRA os endpoints live quando o Excel estiver aberto — mudanças aparecem em tempo real
-FERRAMENTAS DISPONÍVEIS (use-as diretamente — não fale sobre elas):
-  - write_file(path, content): Cria ou sobrescreve um arquivo no servidor
-  - read_file(path): Lê o conteúdo de um arquivo existente
-  - list_files(dir?): Lista arquivos em um diretório (padrão: Documents and Projects)
-  - find_file(name): Encontra um arquivo pelo nome
-  - run_python(code): Executa código Python (pandas, openpyxl, etc.)
-  - create_pdf(html_path, pdf_path): Converte HTML existente em PDF (crie o HTML com write_file primeiro)
-REGRA DE EXECUÇÃO: Use write_file para criar arquivos, read_file para ler antes de editar, run_python para gerar Excel/dados. Emita [file] path após criar cada arquivo.
+FERRAMENTAS DISPONÍVEIS (execute diretamente — NUNCA diga "vou fazer", FAÇA):
+  - write_file(path, content): Cria/sobrescreve arquivo (HTML, CSS, JS, Python, JSON, etc.)
+  - read_file(path): Lê arquivo existente
+  - list_files(dir?): Lista arquivos
+  - find_file(name): Encontra arquivo por nome
+  - run_python(code): Executa Python (pandas, openpyxl, Pillow, MoviePy, etc.)
+  - create_pdf(html_path, pdf_path): Converte HTML em PDF
+  - generate_image(prompt, filename, width?, height?, style?): GERA IMAGEM COM IA — use sempre que pedirem imagem, ilustração, foto, banner, poster, logo, arte, visual
+  - run_ffmpeg(args[], description?): Cria/edita/converte vídeo com FFmpeg — trim, merge, resize, texto, efeitos, converter formato
+  - create_slideshow(images[], output, duration_per_image?, fps?): Cria vídeo slideshow a partir de imagens
+  - scaffold_app(name, type, description, tech?): Inicia projeto de app, depois use write_file para cada arquivo
+
+REGRAS DE EXECUÇÃO (CRÍTICAS):
+  - Imagem pedida → CHAME generate_image IMEDIATAMENTE, não peça confirmação
+  - Vídeo pedido → use run_ffmpeg ou create_slideshow
+  - App pedido → use scaffold_app depois write_file para cada arquivo do projeto completo
+  - NUNCA diga "vou criar" sem chamar a ferramenta. Execute e entregue.
+  - Após cada arquivo criado: o sistema emite [file] automaticamente
 IDIOMA (REGRA ABSOLUTA): Cada palavra no output — incluindo conteúdo de arquivos, labels HTML, títulos, comentários — DEVE estar em Português. Zero exceções.
 ${projectContext ? `\nCONTEXTO DO PROJETO:\n${projectContext}` : ''}`;
     } else {
@@ -912,14 +1066,24 @@ SPREADSHEETS — full real-time access to Excel files (open or closed):
   - Live write:   POST /api/excel-live {action:"write", path, sheet?, operations:[{cell:"A1",value:"x"},...]} → edits open workbook, changes appear on screen immediately, no close needed
   - List open:    POST /api/excel-live {action:"list"} → shows all open Excel workbooks
   - PREFER live endpoints when Excel is open — changes appear in real-time without closing
-AVAILABLE TOOLS (use them directly — don't talk about them):
-  - write_file(path, content): Create or overwrite a file on the server
-  - read_file(path): Read the content of an existing file
-  - list_files(dir?): List files in a directory (default: Documents and Projects)
-  - find_file(name): Find a file by name
-  - run_python(code): Execute Python code (pandas, openpyxl, etc.)
-  - create_pdf(html_path, pdf_path): Convert existing HTML to PDF (create HTML with write_file first)
-EXECUTION RULE: Use write_file to create files, read_file before editing, run_python to generate Excel/data. Emit [file] path after creating each file.
+AVAILABLE TOOLS (execute directly — NEVER say "I will do", DO IT):
+  - write_file(path, content): Create/overwrite any file (HTML, CSS, JS, Python, JSON, etc.)
+  - read_file(path): Read an existing file
+  - list_files(dir?): List files
+  - find_file(name): Find file by name
+  - run_python(code): Execute Python (pandas, openpyxl, Pillow, MoviePy, etc.)
+  - create_pdf(html_path, pdf_path): Convert HTML to PDF
+  - generate_image(prompt, filename, width?, height?, style?): GENERATE AI IMAGE — use whenever user asks for image, illustration, photo, banner, poster, logo, art, visual
+  - run_ffmpeg(args[], description?): Create/edit/convert video with FFmpeg — trim, merge, resize, text overlays, effects, format conversion
+  - create_slideshow(images[], output, duration_per_image?, fps?): Create video slideshow from images
+  - scaffold_app(name, type, description, tech?): Start app project, then use write_file for each file
+
+CRITICAL EXECUTION RULES:
+  - Image requested → CALL generate_image IMMEDIATELY, no confirmation
+  - Video requested → use run_ffmpeg or create_slideshow
+  - App requested → use scaffold_app then write_file for every file to make it complete
+  - NEVER say "I will create" without calling the tool. Execute and deliver.
+  - After each file created: system emits [file] automatically
 LANGUAGE (ABSOLUTE RULE): Every single word in your output — including file content, HTML labels, chart titles, button text, comments, variable names, reports — MUST be in English. Zero exceptions.
 ${projectContext ? `\nPROJECT CONTEXT:\n${projectContext}` : ''}`;
     }
